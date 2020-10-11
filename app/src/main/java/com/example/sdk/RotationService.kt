@@ -15,43 +15,26 @@ class RotationService: Service(), SensorEventListener {
 
     private var mSensorManager: SensorManager? = null
     private var mRotationSensor: Sensor? = null
-    private var service:RotationService? = null
     private var isGeneratorOn = false
     private val SENSOR_DELAY = 500 * 1000 // 500ms
-    private var messanger:Messenger? = null
     private val FROM_RADS_TO_DEGS = -57
     val GET_ORIENTATION_FLAG = 111
-
-    inner class OrientationRequestHanlder : Handler() {
-        override fun handleMessage(msg: Message) {
-            when (msg.what) {
-                GET_ORIENTATION_FLAG -> {
-                    try {
-                        messanger = msg.replyTo
-                    } catch (e: RemoteException) {
-                        e.printStackTrace()
-                    }
-                }
-            }
-            super.handleMessage(msg)
-        }
-    }
-
-    private val orientationMessanger: Messenger = Messenger(OrientationRequestHanlder())
+    var rotation = ""
 
     override fun onBind(intent: Intent?): IBinder? {
-        return orientationMessanger.getBinder();
-    }
+        return object : IRotation.Stub() {
+            override fun getRotation(): String {
+                return  rotation
+            }
 
-    private val mBinder: IRotation.Stub = object : IRotation.Stub() {
-        override fun getRotation(): Int {
-            return  Sensor.TYPE_ROTATION_VECTOR
+            override fun intiateSensor() {
+                isGeneratorOn = true
+            }
         }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         return super.onStartCommand(intent, flags, startId)
-        isGeneratorOn = true
         try {
 
             mSensorManager = getSystemService(Activity.SENSOR_SERVICE) as SensorManager
@@ -103,9 +86,6 @@ class RotationService: Service(), SensorEventListener {
         val pitch = orientation[1] * FROM_RADS_TO_DEGS
         val roll = orientation[2] * FROM_RADS_TO_DEGS
         val senNo: Message = Message.obtain(null, GET_ORIENTATION_FLAG)
-        var bundle = Bundle()
-        bundle.putString("message","Pitch: $pitch Roll: $roll")
-        senNo.data = bundle
-        messanger?.send(senNo)
+        rotation = "Pitch:" +pitch.toString()+ "Roll: " +roll.toString()
     }
 }
